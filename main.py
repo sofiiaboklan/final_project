@@ -30,7 +30,7 @@ def initDB():
                 "availability": True}
                ]
 
-    myOrders = [{"order_id": "1", "item_id": ["A111A2"], "customer_info": "Софія Боклан, Київ, 304",
+    myOrders = [{"order_id": "1", "items_id": ["A111A2"], "customer_info": "Софія Боклан, Київ, 304",
                  "username": "sofiiaboklaan", "order_status": "Очікує підтвердження оплати.", "order_complete": False}]
 
     mycol.drop()
@@ -94,21 +94,12 @@ class Form(StatesGroup):
     put_personal_data = State()
 
 
-@router.callback_query(MyCallback.filter(F.state == "ordering"))
-async def order_callback_foo(query: CallbackQuery, state: FSMContext):
-    await state.set_state(Form.put_personal_data)
-    # await state.update_data(put_code=query.data.split(':')[1])
-    await query.message.answer("<b>Реквізити для оплати:</b> \nОтримувач: Боклан Софія\nМонобанк: 4441 1144 2342 3837"
-                               "\nПісля цього напишіть, будь ласка, свої <b>реквізити для відправки</b> у форматі:"
-                               "\nПІБ, номер телефону, місто, номер відділення нової пошти.")
-
-
 @router.callback_query(MyCallback.filter(F.state == "cart"))
 async def order_callback_foo(query: CallbackQuery, state: FSMContext):
     my_cart.append(query.data.split(':')[1])
     builder = InlineKeyboardBuilder()
     builder.button(text="Перейти до оплати", callback_data=MyCallback(state="ordering").pack())
-    builder.button(text="Додати ще одну річ в кошик", callback_data=MyCallback(state="menu").pack())
+    builder.button(text="Додати ще одну річ в кошик", callback_data=MyCallback(state="entering").pack())
     builder.adjust(1, 2)
     await query.message.answer("Річ додано в кошик!", reply_markup=builder.as_markup())
 
@@ -126,25 +117,41 @@ async def my_callback_foo(query: CallbackQuery, state: FSMContext):
     await echo_handler(query.message)
 
 
+@router.callback_query(MyCallback.filter(F.state == "ordering"))
+async def order_callback_foo(query: CallbackQuery, state: FSMContext):
+    await state.set_state(Form.put_personal_data)
+    # print(len(query.data.split(':')[1]))
+    if len(query.data.split(':')[1]) != 0:
+        await state.update_data(put_code=query.data.split(':')[1])
+    await query.message.answer("<b>Реквізити для оплати:</b> \nОтримувач: Боклан Софія\nМонобанк: 4441 1144 2342 3837"
+                               "\nПісля цього напишіть, будь ласка, свої <b>реквізити для відправки</b> у форматі:"
+                               "\nПІБ, номер телефону, місто, номер відділення нової пошти.")
+
+
 ####################
 @router.message(Form.put_personal_data)
 async def put_personal_data_handler(message: Message, state: FSMContext) -> None:
-    # data = await state.get_data()
-    # item_id = data["put_code"]
+    data = await state.get_data()
+    personal_info = message.text
+    print(data.keys())
+    if data.keys().__contains__("put_code"):
+        item_id = data['put_code']
+        items_id = [item_id]
+        itemsCollection.find_one_and_update({'_id': item_id}, {'$set': {"availability": False}})
+    else:
+        print(my_cart)
+        items_id = my_cart.copy()
+        for item_id in my_cart:
+            itemsCollection.find_one_and_update({'_id': item_id}, {'$set': {"availability": False}})
+        my_cart.clear()
     # await state.update_data(put_personal_data=message.text)
 
-    personal_info = message.text
-    order = {"order_id": ordersCollection.estimated_document_count() + 1, "item_id": my_cart,
+    order = {"order_id": ordersCollection.estimated_document_count() + 1, "items_id": items_id,
              "customer_info": personal_info,
              "username": message.from_user.username, "order_status": "Очікує підтвердження оплати.",
              "order_complete": False}
 
-    for item_id in my_cart:
-        itemsCollection.find_one_and_update({'_id': item_id}, {'$set': {"availability": False}})
-
     ordersCollection.insert_one(order)
-
-    my_cart.clear()
 
     builder = InlineKeyboardBuilder()
     builder.button(text="Головна сторінка", callback_data=MyCallback(state="menu").pack())
@@ -175,7 +182,8 @@ async def put_code_handler(message: Message, state: FSMContext) -> None:
                                  reply_markup=builder.as_markup())
         else:
             builder = InlineKeyboardBuilder()
-            builder.button(text="Додати в кошик", callback_data=MyCallback(state="cart", code=code).pack())
+            if not my_cart.__contains__(code):
+                builder.button(text="Додати в кошик", callback_data=MyCallback(state="cart", code=code).pack())
             builder.button(text="Придбати зараз", callback_data=MyCallback(state="ordering", code=code).pack())
             builder.button(text="Головна сторінка", callback_data=MyCallback(state="menu").pack())
             builder.adjust(1, 2)
@@ -207,11 +215,16 @@ async def command_contact_handler(message: Message) -> None:
 @router.message(F.text == 'Статус замовлення')
 async def command_status_handler(message: Message) -> None:
     myquery = {"username": message.from_user.username}
-    item = ordersCollection.find_one(myquery)
-
-
-
-    await message.answer(text=f"Замовлення №{item['order_id']} \n{item['order_status']}")
+    orders = ordersCollection.find(myquery)
+    response = ""
+    try:
+        while True:
+            order = orders.next()
+            response += f"Замовлення №{order['order_id']} \n{order['order_status']} + \n {order['items_id']}"
+    except StopIteration:
+        if response == "":
+            response = "no orders on ya name"
+        await message.answer(text=response)
 
 
 # МІЙ КОШИК
@@ -227,8 +240,13 @@ async def command_status_handler(message: Message) -> None:
     for item in items:
         response += f"№{item['_id']} + name: {item['name']}"
     if response == "":
-        response = "nothing there"
-    await message.answer(text=response)
+        await message.answer(text='nothing there')
+    else:
+        builder = InlineKeyboardBuilder()
+        builder.button(text="Перейти до оплати", callback_data=MyCallback(state="ordering").pack())
+        builder.button(text="Додати ще одну річ в кошик", callback_data=MyCallback(state="entering").pack())
+        builder.adjust(1, 2)
+        await message.answer(text=response, reply_markup=builder.as_markup())
 
     # print(items.next())
     # # while items.next()
