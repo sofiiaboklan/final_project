@@ -220,10 +220,12 @@ async def command_status_handler(message: Message) -> None:
     try:
         while True:
             order = orders.next()
-            response += f"Замовлення №{order['order_id']} \n{order['order_status']} + \n {order['items_id']}"
+            order_items = ', '.join(order['items_id'])
+            response += f"Замовлення №{order['order_id']}. \nСтатус: {order['order_status']}" \
+                        f"\nЗамовлення: {order_items}"
     except StopIteration:
         if response == "":
-            response = "no orders on ya name"
+            response = "Ви ще не зробили жодного замовлення :("
         await message.answer(text=response)
 
 
