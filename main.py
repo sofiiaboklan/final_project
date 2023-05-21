@@ -190,8 +190,8 @@ async def put_code_handler(message: Message, state: FSMContext) -> None:
     item = itemsCollection.find_one(myquery)
 
     if item is None:
-        await message.answer(f"Ми не знайшли речі за таким артиклем \U0001f494 Переконайтесь, що ввели його правильно, "
-                             "наприклад <b>АА111А</b>")
+        await message.answer(f"Ми не знайшли речі за таким артиклем \U0001f494 \nПереконайтесь, що ввели "
+                             f"його правильно, наприклад <b>А111А1</b>")
     else:
         if item["availability"] is False:
             builder = InlineKeyboardBuilder()
@@ -231,7 +231,8 @@ async def command_place_order_handler(message: Message) -> None:
 
 @router.message(F.text == '\U0001f4deЗвʼязатися з нами\U0001f4de')
 async def command_contact_handler(message: Message) -> None:
-    await message.answer(text="Контакти адміністраторки:\n@sofiiaboklan / +380663343593. \nРобочі години:\n10:00-20:00"
+    await message.answer(text="<b>Контакти адміністраторки:</b>\n@sofiiaboklan / +380663343593. "
+                              "\n\n<b>Робочі години</b>:\n10:00-20:00"
                               "\n\n\U0001f90d")
 
 
