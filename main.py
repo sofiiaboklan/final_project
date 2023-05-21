@@ -4,16 +4,12 @@ import os
 
 import pymongo
 from aiogram import Bot, Dispatcher, Router, types
-from aiogram.filters import Command
+from aiogram import F
 from aiogram.filters.callback_data import CallbackData
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import StatesGroup, State
 from aiogram.types import Message, CallbackQuery, KeyboardButton, ReplyKeyboardMarkup, FSInputFile, InputMediaPhoto
 from aiogram.utils.keyboard import InlineKeyboardBuilder
-from aiogram import F
-from aiogram.types.input_media import InputMedia
-from aiogram.types.update import Update
-from pymongo import ReturnDocument
 
 
 # This function initializes the database connection and returns the collection object for further use.
@@ -210,7 +206,6 @@ async def put_code_handler(message: Message, state: FSMContext) -> None:
 
             photos = await get_photos(code)
             await message.answer_media_group(media=photos)
-            # await message.answer_photo(photo=FSInputFile('resources/A111A1'), caption="Here is a photo!")
             await message.answer(item["name"] +
                                  "\n\n" +
                                  item["price"] +
