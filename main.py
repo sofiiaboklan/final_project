@@ -127,7 +127,6 @@ async def order_callback_foo(query: CallbackQuery):
     await query.message.answer("Річ додано в кошик! \U0001f90d", reply_markup=builder.as_markup())
 
 
-# це як блять каунтер нахуй
 @router.callback_query(MyCallback.filter(F.state == "entering"))
 async def my_callback_foo(query: CallbackQuery, state: FSMContext):
     await state.set_state(Form.put_code)
@@ -221,7 +220,6 @@ async def put_code_handler(message: Message, state: FSMContext) -> None:
             await state.clear()
 
 
-# ПЕРША КОМАНДА "ЗРОБИТИ ЗАМОВЛЕННЯ"
 @router.message(F.text == '\U0001f6cd\uFE0FЗробити замовлення\U0001f6cd\uFE0F')
 async def command_place_order_handler(message: Message) -> None:
     builder = InlineKeyboardBuilder()
@@ -231,7 +229,6 @@ async def command_place_order_handler(message: Message) -> None:
     await message.answer("\u2B07\uFE0F \u2B07\uFE0F \u2B07\uFE0F", reply_markup=builder.as_markup())
 
 
-# ТРЕТЯ КОМАНДА "ЗВʼЯЗАТИСЯ З НАМИ"
 @router.message(F.text == '\U0001f4deЗвʼязатися з нами\U0001f4de')
 async def command_contact_handler(message: Message) -> None:
     await message.answer(text="Контакти адміністраторки:\n@sofiiaboklan / +380663343593. \nРобочі години:\n10:00-20:00"
@@ -256,7 +253,6 @@ async def command_status_handler(message: Message) -> None:
         await message.answer(text=response)
 
 
-# МІЙ КОШИК
 @router.message(F.text == '\U0001f6d2Мій кошик\U0001f6d2')
 async def command_status_handler(message: Message) -> None:
     items = []
